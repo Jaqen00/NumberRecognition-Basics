@@ -1,5 +1,6 @@
 from PIL import Image
 import numpy as np
+import sys
 
 import matplotlib.pyplot as plt
 import time
@@ -55,9 +56,42 @@ def identifyNumber(filePath):
 				if examplePixels[pixel][:3] == currentPixels[pixel][:3]:
 					matchedArr.append(int(exampleNumber))
 
-	#Gives us a sorted descending map with "value":"matched_count" pairs
+	#Gives us a map with "value":"matched_count" pairs
 	matches = Counter(matchedArr)
 	print matches
+
+	max_match = -1
+	match_value = 0
+	for key in matches:
+		if matches[key] > match_value:
+			match_value = matches[key]
+			max_match = key
+
+	if match_value < 400:
+		print 'NO MATCH FOUND'
+	else:
+		print 'MATCH FOUND: ' + str(max_match)
+
+	#Comment from here if matplotlib is not installed or if the plot is not needed
+	graphX = matches.keys()
+	graphY = matches.values()
+
+	figure = plt.figure()
+	#Draw the image on the top
+	ax1 = plt.subplot2grid((5, 4), (0, 0), rowspan=2, colspan=4)
+	#Display the matches with a barchart
+	ax2 = plt.subplot2grid((5, 4), (2, 0), rowspan=3, colspan=4)
+	ax1.imshow(imgArr)
+	ax2.bar(graphX, graphY, align="center")
+
+	#Barchart show only values which are greater than 400
+	plt.ylim(400)
+
+	#Display all values on the x-axis instead of only multiples of 2 for the x-axis labels
+	xloc = plt.MaxNLocator(10+2)
+	ax2.xaxis.set_major_locator(xloc)
+
+	plt.show()
 
 
 
@@ -116,4 +150,4 @@ def threshold(imgArr):
 
 
 createExamples()
-identifyNumber('images/numbers/2.6.png')
+identifyNumber(sys.argv[1])
