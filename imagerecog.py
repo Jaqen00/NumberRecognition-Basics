@@ -4,11 +4,67 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import copy
+from collections import Counter
+
+def createExamples():
+	'''
+	Read files we have and create a single file with all the data. We can read that
+	file later to get back all the data regarding our examples.
+	(Create a training dataset)
+	Format: "Number :: array_data"
+	'''
+	numberArrExamples = open('numberArrExamples.txt', 'w')
+	numbersWeHave = range(0, 10)
+	versionsWeHave = range(1, 10)
+
+	for number in numbersWeHave:
+		for version in versionsWeHave:
+			imgPath = 'images/numbers/' + str(number) + '.' + str(version) + '.png'
+			imgCur = Image.open(imgPath)
+			imgCurArr = threshold(np.array(imgCur))
+			#Storage is easier if we just convert the matrix for each image into a string
+			lineToWrite = str(number) +  "::" + str(imgCurArr.tolist()) + '\n'
+			numberArrExamples.write(lineToWrite)
+
+
+
+def identifyNumber(filePath):
+	'''
+	Works currently only on 8x8 images
+	'''
+	matchedArr = []
+	loadExamples = open('numberArrExamples.txt', 'r').read().split('\n')
+
+	img = Image.open(filePath)
+	imgArr = threshold(np.array(img))
+	imgArrList = imgArr.tolist()
+
+	currentImgStr = str(imgArrList)
+
+	for example in loadExamples:
+		#Ignore blank lines etc
+		if len(example) > 3:
+			splitExample = example.split("::")
+			exampleNumber = splitExample[0]
+			exampleStr = splitExample[1]
+
+			examplePixels = exampleStr.split('],')
+			currentPixels = currentImgStr.split('],')
+
+			for pixel in range(len(examplePixels)):
+				if examplePixels[pixel][:3] == currentPixels[pixel][:3]:
+					matchedArr.append(int(exampleNumber))
+
+	#Gives us a sorted descending map with "value":"matched_count" pairs
+	matches = Counter(matchedArr)
+	print matches
+
+
 
 def threshold(imgArr):
 	'''
 	Convert a color image to a black and white so that pattern detection will become easier later.
-	(Only 2 colors will be used after this - White and Black)
+	(Only 2 colors will be used after this - White(Background) and Black(Context) )
 	'''
 	balanceArr = []
 	newImgArr = copy.deepcopy(imgArr)
@@ -39,56 +95,25 @@ def threshold(imgArr):
 				pixel[0] = 255
 				pixel[1] = 255
 				pixel[2] = 255
-				pixel[3] = 255
+				if len(pixel) > 3:
+					pixel[3] = 255
 			elif np.sum(pixel[:3])/3 < balance and greater<lesser:
 				#Original image background was of a darker color, so the darker colors get replaced with white
 				pixel[0] = 255
 				pixel[1] = 255
 				pixel[2] = 255
-				pixel[3] = 255
+				if len(pixel) > 3:
+					pixel[3] = 255
 			else:
 				#Original image non background parts, these get the color black
 				pixel[0] = 0
 				pixel[1] = 0
 				pixel[2] = 0
-				pixel[3] = 255
+				if len(pixel) > 3:
+					pixel[3] = 255
 
 	return newImgArr
-		
 
-img = Image.open('images/numbers/0.1.png')
-#Create a 3D array where each cell has 4 values - RGBA
-imgarr = np.asarray(img)
-img2 = Image.open('images/numbers/y0.4.png')
-imgarr2 = np.asarray(img2)
-img3 = Image.open('images/numbers/y0.5.png')
-imgarr3 = np.asarray(img3)
-img4 = Image.open('images/sentdex.png')
-imgarr4 = np.asarray(img4)
 
-imgarr = threshold(imgarr)
-imgarr2 = threshold(imgarr2)
-imgarr3 = threshold(imgarr3)
-imgarr4 = threshold(imgarr4)
-
-'''
-#Display a single image
-plt.imshow(img)
-plt.show()
-'''
-
-'''
-#Display 4 images putting them next to each other (2x2 grid)
-figure = plt.figure()
-ax1 = plt.subplot2grid((8, 6), (0, 0), rowspan=4, colspan=3)
-ax2 = plt.subplot2grid((8, 6), (4, 0), rowspan=4, colspan=3)
-ax3 = plt.subplot2grid((8, 6), (0, 3), rowspan=4, colspan=3)
-ax4 = plt.subplot2grid((8, 6), (4, 3), rowspan=4, colspan=3)
-
-ax1.imshow(imgarr)
-ax2.imshow(imgarr2)
-ax3.imshow(imgarr3)
-ax4.imshow(imgarr4)
-
-plt.show()
-'''
+createExamples()
+identifyNumber('images/numbers/2.6.png')
