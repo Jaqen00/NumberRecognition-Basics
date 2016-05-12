@@ -2,6 +2,7 @@ from PIL import Image
 import numpy as np
 import sys
 
+import ast
 import matplotlib.pyplot as plt
 import time
 import copy
@@ -15,8 +16,8 @@ def createExamples():
 	Format: "Number :: array_data"
 	'''
 	numberArrExamples = open('numberArrExamples.txt', 'w')
-	numbersWeHave = range(0, 10)
-	versionsWeHave = range(1, 10)
+	numbersWeHave = range(0, 10) #We have 10 digits 
+	versionsWeHave = range(1, 16) #We have 15 versions of each digit
 
 	for number in numbersWeHave:
 		for version in versionsWeHave:
@@ -28,12 +29,16 @@ def createExamples():
 			numberArrExamples.write(lineToWrite)
 
 
+def isMatch(pixel1, pixel2):
+	if pixel1[0] == pixel2[0] and pixel1[1] == pixel2[1] and pixel1[2] == pixel2[2]:
+		return 1
+	return 0
 
 def identifyNumber(filePath):
 	'''
 	Works currently only on 8x8 images
 	'''
-	matchedArr = []
+	matches = {'0': 0, '1': 0, '2': 0, '3':0, '4':0, '5':0, '6':0, '7':0, '8':0, '9':0}
 	loadExamples = open('numberArrExamples.txt', 'r').read().split('\n')
 
 	img = Image.open(filePath)
@@ -49,15 +54,21 @@ def identifyNumber(filePath):
 			exampleNumber = splitExample[0]
 			exampleStr = splitExample[1]
 
-			examplePixels = exampleStr.split('],')
-			currentPixels = currentImgStr.split('],')
+			exampleArr = threshold(np.array(ast.literal_eval(exampleStr)))
 
-			for pixel in range(len(examplePixels)):
-				if examplePixels[pixel][:3] == currentPixels[pixel][:3]:
-					matchedArr.append(int(exampleNumber))
+			for row in range(len(imgArr)):
+				for col in range(len(imgArr[row])):
+					matches[str(exampleNumber)] += 1.0 * isMatch(exampleArr[row][col], imgArr[row][col])
+					if col - 1 >= 0:
+						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[row][col-1], imgArr[row][col])
+					if col + 1 < len(exampleArr[row]):
+						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[row][col+1], imgArr[row][col])
+					if row - 1 >= 0:
+						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[row-1][col], imgArr[row][col])
+					if row + 1 < len(exampleArr):
+						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[row+1][col], imgArr[row][col])
 
 	#Gives us a map with "value":"matched_count" pairs
-	matches = Counter(matchedArr)
 	print matches
 
 	max_match = -1
@@ -67,13 +78,13 @@ def identifyNumber(filePath):
 			match_value = matches[key]
 			max_match = key
 
-	if match_value < 400:
+	if match_value < 1500:
 		print 'NO MATCH FOUND'
 	else:
 		print 'MATCH FOUND: ' + str(max_match)
 
 	#Comment from here if matplotlib is not installed or if the plot is not needed
-	graphX = matches.keys()
+	graphX = map(int,matches.keys())
 	graphY = matches.values()
 
 	figure = plt.figure()
@@ -85,7 +96,7 @@ def identifyNumber(filePath):
 	ax2.bar(graphX, graphY, align="center")
 
 	#Barchart show only values which are greater than 400
-	plt.ylim(400)
+	plt.ylim(1500)
 
 	#Display all values on the x-axis instead of only multiples of 2 for the x-axis labels
 	xloc = plt.MaxNLocator(10+2)
