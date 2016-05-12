@@ -34,6 +34,20 @@ def isMatch(pixel1, pixel2):
 		return 1
 	return 0
 
+def centeringImage(imgArr):
+	'''
+	Takes an image and gives x and y coordinates for the first occurance of a black pixel
+	'''
+	x_offset = 8 + 1
+	y_offset = 8 + 1
+	for row in range(len(imgArr)):
+		for col in range(len(imgArr[row])):
+			if isMatch(imgArr[row][col], [0, 0, 0]):
+				x_offset = min(x_offset, row)
+				y_offset = min(y_offset, col)
+	return [x_offset, y_offset]
+
+
 def identifyNumber(filePath):
 	'''
 	Works currently only on 8x8 images
@@ -43,6 +57,7 @@ def identifyNumber(filePath):
 
 	img = Image.open(filePath)
 	imgArr = threshold(np.array(img))
+	imgOffsets = centeringImage(imgArr)
 	imgArrList = imgArr.tolist()
 
 	currentImgStr = str(imgArrList)
@@ -55,18 +70,31 @@ def identifyNumber(filePath):
 			exampleStr = splitExample[1]
 
 			exampleArr = threshold(np.array(ast.literal_eval(exampleStr)))
+			exampleOffsets = centeringImage(exampleArr)
 
-			for row in range(len(imgArr)):
-				for col in range(len(imgArr[row])):
-					matches[str(exampleNumber)] += 1.0 * isMatch(exampleArr[row][col], imgArr[row][col])
-					if col - 1 >= 0:
-						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[row][col-1], imgArr[row][col])
-					if col + 1 < len(exampleArr[row]):
-						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[row][col+1], imgArr[row][col])
-					if row - 1 >= 0:
-						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[row-1][col], imgArr[row][col])
-					if row + 1 < len(exampleArr):
-						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[row+1][col], imgArr[row][col])
+			#Match images after they are centered using their offsets, so that 
+			#little shifts in position still recognize the image.
+			example_x = exampleOffsets[0]
+			example_y = exampleOffsets[1]
+
+			for row in range(imgOffsets[0], len(imgArr)):
+				if example_x >= len(exampleArr):
+					break
+				for col in range(imgOffsets[1], len(imgArr[row])):
+					if example_y >= len(exampleArr[example_x]):
+						break
+					matches[str(exampleNumber)] += 1.0 * isMatch(exampleArr[example_x][example_y], imgArr[row][col])
+					if example_y - 1 >= 0:
+						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[example_x][example_y-1], imgArr[row][col])
+					if example_y + 1 < len(exampleArr[example_x]):
+						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[example_x][example_y+1], imgArr[row][col])
+					if example_x - 1 >= 0:
+						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[example_x-1][example_y], imgArr[row][col])
+					if example_x + 1 < len(exampleArr):
+						matches[str(exampleNumber)] += 0.5 * isMatch(exampleArr[example_x+1][example_y], imgArr[row][col])
+					example_y += 1
+				example_x += 1
+				example_y = exampleOffsets[1]
 
 	#Gives us a map with "value":"matched_count" pairs
 	print matches
@@ -78,7 +106,7 @@ def identifyNumber(filePath):
 			match_value = matches[key]
 			max_match = key
 
-	if match_value < 1500:
+	if match_value < 1200:
 		print 'NO MATCH FOUND'
 	else:
 		print 'MATCH FOUND: ' + str(max_match)
@@ -96,7 +124,7 @@ def identifyNumber(filePath):
 	ax2.bar(graphX, graphY, align="center")
 
 	#Barchart show only values which are greater than 400
-	plt.ylim(1500)
+	plt.ylim(1200)
 
 	#Display all values on the x-axis instead of only multiples of 2 for the x-axis labels
 	xloc = plt.MaxNLocator(10+2)
